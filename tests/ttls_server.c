@@ -34,12 +34,12 @@
 #include <unistd.h>
 
 #include <libpomp.h>
-#include <openssl/engine.h>
 #include <openssl/err.h>
 #include <openssl/ssl.h>
 #include <transport-packet/tpkt.h>
 #include <transport-socket/tskt.h>
 #include <transport-tls/ttls.h>
+#include <transport-tls/ttls_utils.h>
 
 #define SERVER_TCP_PORT 11111
 
@@ -235,37 +235,15 @@ int main(int argc, char **argv)
 	int res;
 	SSL_CTX *ssl_ctx;
 	char *cert, *key;
-#ifndef OPENSSL_NO_ENGINE
-	ENGINE *ssl_engine;
-	char *engine;
-#endif
-	bool use_engine = false;
 
-	use_engine = argc >= 2 && strcmp(argv[1], "-engine") == 0;
-	if (argc < 3 || (use_engine && argc < 5)) {
+	if (argc < 3) {
 		fprintf(stderr,
 			"missing argument, usage:\n"
-			"ttls-server <cert-file.pem> <key-file.pem>\n"
-			"ttls-server -engine <engine-name> <key-name> <cert-file.pem>\n");
+			"ttls-server <cert-file.pem> <key-file.pem>\n");
 		return 1;
 	}
-
-	if (use_engine) {
-#ifndef OPENSSL_NO_ENGINE
-		engine = argv[2];
-		key = argv[3];
-		cert = argv[4];
-#else
-		fprintf(stderr, "engine not supported\n");
-		return 1;
-#endif
-	} else {
-#ifndef OPENSSL_NO_ENGINE
-		engine = NULL;
-#endif
-		cert = argv[1];
-		key = argv[2];
-	}
+	cert = argv[1];
+	key = argv[2];
 
 	printf("start TLS test server\n");
 
@@ -284,62 +262,15 @@ int main(int argc, char **argv)
 		ERR_print_errors_fp(stderr);
 		return 1;
 	}
-	if (SSL_CTX_use_certificate_file(ssl_ctx, cert, SSL_FILETYPE_PEM) !=
-	    1) {
-		fprintf(stderr, "failed to read certificate '%s'\n", cert);
+	res = ttls_ctx_use_certificate(ssl_ctx, cert, key);
+	if (res < 0) {
+		fprintf(stderr,
+			"failed to read certificate or key '%s'/'%s'\n",
+			cert,
+			key);
 		ERR_print_errors_fp(stderr);
 		return 1;
 	}
-#ifndef OPENSSL_NO_ENGINE
-	if (engine) {
-		EVP_PKEY *pkey;
-		ssl_engine = ENGINE_by_id(engine);
-		if (!ssl_engine) {
-			fprintf(stderr,
-				"failed to lookup engine '%s'\n",
-				engine);
-			ERR_print_errors_fp(stderr);
-			return 1;
-		}
-		if (!ENGINE_init(ssl_engine)) {
-			fprintf(stderr,
-				"failed to initialized engine '%s'\n",
-				engine);
-			ERR_print_errors_fp(stderr);
-			return 1;
-		}
-		pkey = ENGINE_load_private_key(ssl_engine, key, NULL, NULL);
-		if (!pkey) {
-			fprintf(stderr,
-				"can't load private key '%s' from engine '%s'\n",
-				key,
-				engine);
-			ERR_print_errors_fp(stderr);
-			return 1;
-		}
-
-		if (!SSL_CTX_use_PrivateKey(ssl_ctx, pkey)) {
-			fprintf(stderr,
-				"can't used private key '%s' from engine '%s'\n",
-				key,
-				engine);
-			ERR_print_errors_fp(stderr);
-			return 1;
-		}
-	} else {
-		ssl_engine = NULL;
-#endif
-		if (SSL_CTX_use_PrivateKey_file(
-			    ssl_ctx, key, SSL_FILETYPE_PEM) != 1) {
-			fprintf(stderr,
-				"failed to read private key '%s'\n",
-				key);
-			ERR_print_errors_fp(stderr);
-			return 1;
-		}
-#ifndef OPENSSL_NO_ENGINE
-	}
-#endif
 
 	/* pomp loop */
 	struct pomp_loop *loop = pomp_loop_new();
@@ -375,12 +306,6 @@ int main(int argc, char **argv)
 	tskt_socket_destroy(sock);
 	pomp_loop_destroy(loop);
 	SSL_CTX_free(ssl_ctx);
-#ifndef OPENSSL_NO_ENGINE
-	if (ssl_engine) {
-		ENGINE_finish(ssl_engine);
-		ENGINE_free(ssl_engine);
-	}
-#endif
 	ttls_deinit();
 
 	return 0;

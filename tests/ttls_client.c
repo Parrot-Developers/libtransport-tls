@@ -41,6 +41,7 @@
 #include <transport-packet/tpkt.h>
 #include <transport-socket/tskt.h>
 #include <transport-tls/ttls.h>
+#include <transport-tls/ttls_utils.h>
 
 #define SERVER_TCP_ADDR "127.0.0.1"
 #define SERVER_TCP_PORT 11111
@@ -133,6 +134,17 @@ close_socket:
 	app_stop = true;
 }
 
+static int ssl_ctx_verify_cb(int preverify_ok, X509_STORE_CTX *x509_ctx)
+{
+	if (preverify_ok) {
+		printf("valid certificate\n");
+		return 1;
+	}
+	int err = X509_STORE_CTX_get_error(x509_ctx);
+	printf("invalid certificate: %s\n", X509_verify_cert_error_string(err));
+	return 0;
+}
+
 /* main function */
 int main(int argc, char **argv)
 {
@@ -157,6 +169,19 @@ int main(int argc, char **argv)
 		fprintf(stderr, "ssl_ctx_new: failed");
 		ERR_print_errors_fp(stderr);
 		return 1;
+	}
+
+	/* list of CAs to check */
+	if (argc >= 2) {
+		res = ttls_ctx_load_ca_list(client.ssl_ctx, argv[1]);
+		if (res < 0) {
+			fprintf(stderr, "failed to read CA(s) '%s'\n", argv[1]);
+			return 1;
+		}
+		SSL_CTX_set_verify(client.ssl_ctx,
+				   SSL_VERIFY_PEER |
+					   SSL_VERIFY_FAIL_IF_NO_PEER_CERT,
+				   ssl_ctx_verify_cb);
 	}
 
 	/* pomp loop */

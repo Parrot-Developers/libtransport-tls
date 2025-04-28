@@ -48,4 +48,28 @@ struct ulog_cookie;
  */
 TTLS_API void ttls_ulog_errors(struct ulog_cookie *cookie);
 
+
+/**
+ * Load certificate and private key into a context
+ */
+
+TTLS_API int ttls_ctx_use_certificate(struct ssl_ctx_st *ssl_ctx,
+				      const char *cert_uri,
+				      const char *pkey_uri);
+
+
+/**
+ * Add a single CA to a context
+ */
+
+TTLS_API int ttls_ctx_load_ca(struct ssl_ctx_st *ssl_ctx, const char *ca_uri);
+
+
+/**
+ * Add comma separated list of CAs to a context
+ */
+
+TTLS_API int ttls_ctx_load_ca_list(struct ssl_ctx_st *ssl_ctx,
+				   const char *ca_list);
+
 #endif /* !_TTLS_UTILS_H_ */

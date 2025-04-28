@@ -19,6 +19,7 @@ BreakStringLiterals: false
 ContinuationIndentWidth: 8
 ConstructorInitializerIndentWidth: 16
 IndentCaseLabels: false
+IndentGotoLabels: false
 IndentPPDirectives: AfterHash
 IndentWidth: 8
 Language: Cpp
