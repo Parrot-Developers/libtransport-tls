@@ -179,7 +179,7 @@ static void ttls_notify_event_cb(struct pomp_evt *evt, void *userdata)
 	struct ttls_socket *ttls = userdata;
 	int ret;
 
-	if (ttls->cb == NULL) {
+	if (ttls->cb == NULL || ttls->events == 0) {
 		ULOGW("spurious notify event");
 		ttls->notify = false;
 		return;
