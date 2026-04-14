@@ -171,6 +171,11 @@ int main(int argc, char **argv)
 		return 1;
 	}
 
+	if (!SSL_CTX_set_min_proto_version(client.ssl_ctx, TLS1_2_VERSION)) {
+		fprintf(stderr, "failed to set min proto version");
+		return 1;
+	}
+
 	/* list of CAs to check */
 	if (argc >= 2) {
 		res = ttls_ctx_load_ca_list(client.ssl_ctx, argv[1]);

@@ -383,7 +383,7 @@ static int ttls_io_return(struct ttls_socket *ttls, int ret, uint32_t events)
 			break;
 		case SSL_ERROR_SSL:
 			ttls->ssl_error = ERR_peek_last_error();
-			/* fallthrough */
+			__attribute__((fallthrough));
 		default:
 			ret = -EPROTO;
 			break;
