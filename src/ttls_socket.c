@@ -771,7 +771,7 @@ static ssize_t ttls_socket_writev(struct tskt_socket *self,
 			continue;
 		total += len;
 		if (total > TTLS_WRITE_MAX) {
-			len -= TTLS_WRITE_MAX - total;
+			len -= total - TTLS_WRITE_MAX;
 			total = TTLS_WRITE_MAX;
 		}
 		memcpy(p, iov[i].iov_base, len);
